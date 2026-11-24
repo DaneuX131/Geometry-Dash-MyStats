@@ -1,0 +1,42 @@
+name: Build GD Push APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Create project, add packages & permissions
+        run: |
+          flutter create gd_push_app
+          cp main.dart gd_push_app/lib/main.dart
+          cd gd_push_app
+          flutter pub add http path_provider
+          sed -i 's/<application/<uses-permission android:name="android.permission.INTERNET" \/>\n    <application/' android/app/src/main/AndroidManifest.xml
+
+      - name: Build Release APK
+        working-directory: gd_push_app
+        run: flutter build apk --release
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gd-push-apk
+          path: gd_push_app/build/app/outputs/flutter-apk/app-release.apk
